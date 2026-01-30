@@ -12,9 +12,10 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QInputDialog,
+    QFileSystemModel,
 )
 from PySide6.QtCore import Signal, Slot, Qt, QModelIndex
-from PySide6.QtGui import QFileSystemModel, QDesktopServices, QAction
+from PySide6.QtGui import QDesktopServices, QAction
 from PySide6.QtCore import QUrl
 
 

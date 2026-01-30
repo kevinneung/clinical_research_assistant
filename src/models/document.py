@@ -18,7 +18,7 @@ class Document(Base):
     title = Column(String(255), nullable=False)
     file_path = Column(String(500), nullable=False)
     created_by_agent = Column(String(50))  # Which agent created it
-    metadata = Column(JSON)  # Additional document-specific metadata
+    extra_data = Column(JSON)  # Additional document-specific metadata
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
