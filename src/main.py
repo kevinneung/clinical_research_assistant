@@ -3,6 +3,11 @@
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load .env BEFORE any pydantic-ai agent imports (they validate API keys at import time)
+load_dotenv()
+
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from src.utils.config import load_config

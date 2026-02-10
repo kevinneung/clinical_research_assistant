@@ -67,7 +67,6 @@ When creating CSV exports:
 """
 
 project_manager_agent = Agent(
-    "anthropic:claude-sonnet-4-20250514",
     deps_type=AgentDeps,
     output_type=ProjectEstimate,
     instructions=PROJECT_MANAGER_INSTRUCTIONS,

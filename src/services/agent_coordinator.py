@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from src.agents import orchestrator_agent, AgentDeps
 from src.mcp import create_mcp_toolsets
 from src.models import AgentRun, Approval
+from src.utils.config import get_config
 
 
 class AgentWorker(QThread):
@@ -123,11 +124,15 @@ class AgentCoordinator(QObject):
                 progress_callback=self._send_progress,
             )
 
-            # Run agent with MCP servers
+            # Run agent with MCP servers passed as toolsets
             mcp_servers = deps.get_active_mcp_servers()
 
-            async with orchestrator_agent.run_mcp_servers(*mcp_servers):
-                result = await orchestrator_agent.run(prompt, deps=deps)
+            result = await orchestrator_agent.run(
+                prompt,
+                deps=deps,
+                model=get_config().default_model,
+                toolsets=mcp_servers,
+            )
 
             # Update agent run record
             agent_run.complete(
@@ -135,11 +140,12 @@ class AgentCoordinator(QObject):
                 if hasattr(result.output, "model_dump")
                 else str(result.output)
             )
-            if result.usage():
+            usage = result.usage()
+            if usage:
                 agent_run.token_usage = {
-                    "request_tokens": result.usage().request_tokens,
-                    "response_tokens": result.usage().response_tokens,
-                    "total_tokens": result.usage().total_tokens,
+                    "request_tokens": usage.request_tokens,
+                    "response_tokens": usage.response_tokens,
+                    "total_tokens": usage.total_tokens,
                 }
             self.db_session.commit()
 

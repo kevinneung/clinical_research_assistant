@@ -62,7 +62,6 @@ File organization:
 """
 
 document_maker_agent = Agent(
-    "anthropic:claude-sonnet-4-20250514",
     deps_type=AgentDeps,
     output_type=ComplianceDocument,
     instructions=DOCUMENT_MAKER_INSTRUCTIONS,

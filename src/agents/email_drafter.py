@@ -55,7 +55,6 @@ Format guidelines:
 """
 
 email_drafter_agent = Agent(
-    "anthropic:claude-sonnet-4-20250514",
     deps_type=AgentDeps,
     output_type=DraftEmail,
     instructions=EMAIL_DRAFTER_INSTRUCTIONS,

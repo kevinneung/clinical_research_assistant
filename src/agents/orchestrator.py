@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
 
 from .base import AgentDeps
+from src.utils.config import get_config
 
 
 class PlanStep(BaseModel):
@@ -50,7 +51,6 @@ When using MCP tools:
 """
 
 orchestrator_agent = Agent(
-    "anthropic:claude-sonnet-4-20250514",
     deps_type=AgentDeps,
     output_type=TaskPlan | str,
     instructions=ORCHESTRATOR_INSTRUCTIONS,
@@ -80,8 +80,9 @@ async def delegate_to_project_manager(
     if research_queries:
         prompt += f"\n\nSpecific items to research: {', '.join(research_queries)}"
 
-    async with project_manager_agent:
-        result = await project_manager_agent.run(prompt, deps=ctx.deps)
+    result = await project_manager_agent.run(
+        prompt, deps=ctx.deps, model=get_config().default_model
+    )
 
     return str(result.output)
 
@@ -107,8 +108,9 @@ async def delegate_to_document_maker(
 
     prompt = f"Create a {document_type} document.\n\nContext: {context}"
 
-    async with document_maker_agent:
-        result = await document_maker_agent.run(prompt, deps=ctx.deps)
+    result = await document_maker_agent.run(
+        prompt, deps=ctx.deps, model=get_config().default_model
+    )
 
     return str(result.output)
 
@@ -136,8 +138,9 @@ async def delegate_to_email_drafter(
 
     prompt = f"Draft an email for {email_purpose}.\n\nRecipients: {', '.join(recipients)}\n\nContext: {context}"
 
-    async with email_drafter_agent:
-        result = await email_drafter_agent.run(prompt, deps=ctx.deps)
+    result = await email_drafter_agent.run(
+        prompt, deps=ctx.deps, model=get_config().default_model
+    )
 
     return str(result.output)
 
