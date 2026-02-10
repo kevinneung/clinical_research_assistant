@@ -31,7 +31,7 @@ def create_mcp_toolsets(workspace_path: str | Path) -> MCPToolsets:
     # Filesystem MCP server - always available
     filesystem = MCPServerStdio(
         "npx",
-        args=["-y", "@anthropic/mcp-server-filesystem", workspace_path],
+        args=["-y", "@modelcontextprotocol/server-filesystem", workspace_path],
     )
 
     # Web search MCP server - requires BRAVE_API_KEY
@@ -40,7 +40,7 @@ def create_mcp_toolsets(workspace_path: str | Path) -> MCPToolsets:
     if brave_api_key:
         web_search = MCPServerStdio(
             "npx",
-            args=["-y", "@anthropic/mcp-server-brave-search"],
+            args=["-y", "@modelcontextprotocol/server-brave-search"],
             env={"BRAVE_API_KEY": brave_api_key},
         )
 

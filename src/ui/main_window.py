@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QDialog
 
 from .chat_panel import ChatPanel
 from .workspace_panel import WorkspacePanel
@@ -141,6 +142,7 @@ class MainWindow(QMainWindow):
             self.coordinator.message_received.connect(self.chat_panel.append_message)
             self.coordinator.approval_requested.connect(self._on_approval_requested)
             self.coordinator.plan_updated.connect(self.plan_viewer.update_plan)
+            self.coordinator.status_changed.connect(self._on_status_changed)
 
     @Slot()
     def _on_new_project(self) -> None:
@@ -189,8 +191,22 @@ class MainWindow(QMainWindow):
         """Handle message sent from chat panel."""
         if self.coordinator:
             self.status_label.setText("Processing...")
-            # Run agent asynchronously - coordinator handles this
+            self.chat_panel.set_input_enabled(False)
             self.coordinator.run_async(message)
+
+    @Slot(str, str)
+    def _on_status_changed(self, status: str, agent: str) -> None:
+        """Handle coordinator status changes to keep UI in sync."""
+        status_messages = {
+            "running": f"Agent working: {agent}" if agent else "Processing...",
+            "waiting": "Waiting for approval...",
+            "completed": "Ready",
+            "error": "Error occurred",
+        }
+        self.status_label.setText(status_messages.get(status, "Ready"))
+
+        if status in ("completed", "error"):
+            self.chat_panel.set_input_enabled(True)
 
     @Slot(str, dict)
     def _on_approval_requested(self, action: str, details: dict) -> None:
@@ -201,7 +217,7 @@ class MainWindow(QMainWindow):
         result = dialog.exec()
 
         if self.coordinator:
-            approved = result == dialog.Accepted
+            approved = result == QDialog.Accepted
             notes = dialog.get_notes()
             self.coordinator.handle_approval_response(approved, notes)
 
