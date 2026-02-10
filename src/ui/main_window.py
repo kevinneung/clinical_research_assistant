@@ -141,6 +141,8 @@ class MainWindow(QMainWindow):
             # Connect coordinator signals to UI
             self.coordinator.message_received.connect(self.chat_panel.append_message)
             self.coordinator.approval_requested.connect(self._on_approval_requested)
+            self.coordinator.question_asked.connect(self.chat_panel.show_question)
+            self.chat_panel.question_answered.connect(self.coordinator.handle_question_response)
             self.coordinator.plan_updated.connect(self.plan_viewer.update_plan)
             self.coordinator.status_changed.connect(self._on_status_changed)
 
@@ -199,7 +201,7 @@ class MainWindow(QMainWindow):
         """Handle coordinator status changes to keep UI in sync."""
         status_messages = {
             "running": f"Agent working: {agent}" if agent else "Processing...",
-            "waiting": "Waiting for approval...",
+            "waiting": "Waiting for your response..." if agent == "Your response" else "Waiting for approval...",
             "completed": "Ready",
             "error": "Error occurred",
         }

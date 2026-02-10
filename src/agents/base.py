@@ -29,6 +29,7 @@ class AgentDeps:
     mcp_email: Any | None  # MCPServerHTTP | None
     approval_callback: Callable[[str, dict], Awaitable[bool]]
     progress_callback: Callable[[str, str], None]
+    question_callback: Callable[[str, list[str]], Awaitable[str]]
 
     def get_active_mcp_servers(self) -> list:
         """Get list of active MCP servers."""

@@ -5,6 +5,7 @@ from .chat_panel import ChatPanel
 from .workspace_panel import WorkspacePanel
 from .plan_viewer import PlanViewer
 from .approval_dialog import ApprovalDialog
+from .question_widget import QuestionWidget
 from .styles import get_stylesheet
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "WorkspacePanel",
     "PlanViewer",
     "ApprovalDialog",
+    "QuestionWidget",
     "get_stylesheet",
 ]

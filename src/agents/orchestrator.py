@@ -39,6 +39,10 @@ Available downstream agents:
 - email_drafter: Drafts professional emails for various stakeholders
 
 Guidelines:
+- When a request is broad or underspecified, use ask_researcher_question to gather
+  clarifying information ONE question at a time before creating a plan. For example,
+  ask about study phase, therapeutic area, target enrollment, etc. Use your judgment
+  about when questions are helpful vs. when you can proceed directly.
 - Always break down complex requests into specific, actionable steps
 - Identify which downstream agent should handle each step
 - Use the filesystem tools to read/write documents in the workspace
@@ -55,6 +59,30 @@ orchestrator_agent = Agent(
     output_type=TaskPlan | str,
     instructions=ORCHESTRATOR_INSTRUCTIONS,
 )
+
+
+@orchestrator_agent.tool
+async def ask_researcher_question(
+    ctx: RunContext[AgentDeps],
+    question: str,
+    options: list[str],
+) -> str:
+    """Ask the researcher a multiple-choice question to gather information.
+
+    Use this when you need clarifying details before creating a plan.
+    Ask one question at a time. The researcher can pick from the provided
+    options or type a custom answer.
+
+    Args:
+        question: The question to ask (e.g., "What phase is this trial?").
+        options: 2-4 concise answer choices (an "Other" free-text option is
+                 added automatically by the UI).
+
+    Returns:
+        The researcher's selected or typed answer.
+    """
+    ctx.deps.progress_callback("Question", question)
+    return await ctx.deps.question_callback(question, options)
 
 
 @orchestrator_agent.tool

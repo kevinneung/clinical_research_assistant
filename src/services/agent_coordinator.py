@@ -77,6 +77,7 @@ class AgentCoordinator(QObject):
     # Signals for UI updates
     message_received = Signal(str, str)  # sender, content
     approval_requested = Signal(str, dict)  # action, details
+    question_asked = Signal(str, list)  # question text, options list
     plan_updated = Signal(dict)  # plan data
     status_changed = Signal(str, str)  # status, agent
     task_changed = Signal(str)  # task description
@@ -89,6 +90,8 @@ class AgentCoordinator(QObject):
         self._approval_event: asyncio.Event | None = None
         self._approval_result = False
         self._approval_notes = ""
+        self._question_event: asyncio.Event | None = None
+        self._question_answer: str = ""
         self._current_worker: AgentWorker | None = None
         self._mcp_toolsets = None
         self._pending_plan: dict | None = None
@@ -156,6 +159,7 @@ class AgentCoordinator(QObject):
                 mcp_email=self._mcp_toolsets.email,
                 approval_callback=self._request_approval,
                 progress_callback=self._send_progress,
+                question_callback=self._ask_question,
             )
 
             # Run agent with MCP servers passed as toolsets
@@ -224,6 +228,42 @@ class AgentCoordinator(QObject):
         """
         self.message_received.emit("Assistant", f"**{status}**: {details}")
         self.history_entry.emit("Orchestrator", f"{status}: {details}", "running")
+
+    async def _ask_question(self, question: str, options: list[str]) -> str:
+        """Ask the researcher a multiple-choice question via the UI.
+
+        Args:
+            question: The question text.
+            options: List of answer choices.
+
+        Returns:
+            The researcher's answer string.
+        """
+        self._question_event = asyncio.Event()
+        self._question_answer = ""
+
+        # Emit signal to UI (received on main thread)
+        self.question_asked.emit(question, options)
+        self.status_changed.emit("waiting", "Your response")
+
+        # Wait for response
+        await self._question_event.wait()
+
+        self.status_changed.emit("running", "Orchestrator")
+        return self._question_answer
+
+    @Slot(str)
+    def handle_question_response(self, answer: str) -> None:
+        """Handle the researcher's answer from the UI.
+
+        Args:
+            answer: The selected or typed answer.
+        """
+        self._question_answer = answer
+        if self._question_event and self._current_worker and self._current_worker.loop:
+            self._current_worker.loop.call_soon_threadsafe(
+                self._question_event.set
+            )
 
     @Slot(bool, str)
     def handle_approval_response(self, approved: bool, notes: str = "") -> None:

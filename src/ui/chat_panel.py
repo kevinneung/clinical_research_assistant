@@ -12,11 +12,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, Slot, Qt
 from PySide6.QtGui import QTextCursor
 
+from .question_widget import QuestionWidget
+
 
 class ChatPanel(QWidget):
     """Chat interface for communicating with the agent system."""
 
     message_sent = Signal(str)  # Emitted when user sends a message
+    question_answered = Signal(str)  # Emitted when user answers an agent question
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,6 +44,11 @@ class ChatPanel(QWidget):
             "Describe your research task or ask questions about clinical trials."
         )
         layout.addWidget(self.message_display)
+
+        # Question widget (hidden by default, shown when agent asks a question)
+        self.question_widget = QuestionWidget()
+        self.question_widget.answer_selected.connect(self._on_question_answered)
+        layout.addWidget(self.question_widget)
 
         # Input area
         input_layout = QHBoxLayout()
@@ -114,6 +122,23 @@ class ChatPanel(QWidget):
         cursor.movePosition(QTextCursor.End)
         cursor.insertText("</p>")
         self.message_display.setTextCursor(cursor)
+
+    @Slot(str, list)
+    def show_question(self, question: str, options: list) -> None:
+        """Display a multiple-choice question from the agent.
+
+        Args:
+            question: The question text.
+            options: List of answer choices.
+        """
+        self.append_message("Assistant", question)
+        self.question_widget.show_question(question, options)
+
+    @Slot(str)
+    def _on_question_answered(self, answer: str) -> None:
+        """Handle the user selecting an answer in the question widget."""
+        self.append_message("You", answer)
+        self.question_answered.emit(answer)
 
     def set_input_enabled(self, enabled: bool) -> None:
         """Enable or disable the input controls.

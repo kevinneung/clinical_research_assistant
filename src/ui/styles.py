@@ -206,4 +206,39 @@ def get_stylesheet() -> str:
     QDialog {
         background-color: white;
     }
+
+    /* Question Widget */
+    QFrame#questionWidget {
+        background-color: #F1F8E9;
+        border: 1px solid #4CAF50;
+        border-radius: 6px;
+        margin: 4px 0;
+    }
+
+    QLabel#questionLabel {
+        font-size: 14px;
+        font-weight: 600;
+        color: #2E7D32;
+        padding: 4px 0;
+    }
+
+    QPushButton#optionButton {
+        background-color: white;
+        color: #333333;
+        border: 1px solid #4CAF50;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-size: 13px;
+        text-align: left;
+    }
+
+    QPushButton#optionButton:hover {
+        background-color: #E8F5E9;
+        border-color: #388E3C;
+    }
+
+    QPushButton#optionButton:pressed {
+        background-color: #C8E6C9;
+        border-color: #2E7D32;
+    }
     """
