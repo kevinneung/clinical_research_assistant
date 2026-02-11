@@ -92,19 +92,33 @@ class AgentWorker(QThread):
 
     finished = Signal(object)  # Result or error
     error = Signal(str)
+    cancelled = Signal()
 
     def __init__(self, coro):
         super().__init__()
         self.coro = coro
         self.loop: asyncio.AbstractEventLoop | None = None
+        self._task: asyncio.Task | None = None
 
     def run(self):
         """Run the coroutine in a new event loop."""
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self._task = self.loop.create_task(self.coro)
         try:
-            result = asyncio.run(self.coro)
+            result = self.loop.run_until_complete(self._task)
             self.finished.emit(result)
+        except asyncio.CancelledError:
+            self.cancelled.emit()
         except BaseException as e:
             self.error.emit(_format_error(e))
+        finally:
+            self.loop.close()
+
+    def cancel(self):
+        """Request cancellation of the running task."""
+        if self.loop and self._task and not self._task.done():
+            self.loop.call_soon_threadsafe(self._task.cancel)
 
 
 class AgentCoordinator(QObject):
@@ -159,6 +173,7 @@ class AgentCoordinator(QObject):
         self._current_worker = AgentWorker(coro)
         self._current_worker.finished.connect(self._on_agent_finished)
         self._current_worker.error.connect(self._on_agent_error)
+        self._current_worker.cancelled.connect(self._on_agent_cancelled)
         self._current_worker.start()
 
         self.status_changed.emit("running", "Orchestrator")
@@ -459,10 +474,54 @@ class AgentCoordinator(QObject):
         self.run_async(execution_prompt)
 
     def stop(self) -> None:
-        """Stop the current agent execution."""
+        """Stop the current agent execution gracefully."""
         if self._current_worker and self._current_worker.isRunning():
-            self._current_worker.terminate()
-            self._current_worker.wait()
+            # Unblock any pending events so cancellation can propagate
+            if self._approval_event and self._current_worker.loop:
+                self._current_worker.loop.call_soon_threadsafe(
+                    self._approval_event.set
+                )
+            if self._question_event and self._current_worker.loop:
+                self._current_worker.loop.call_soon_threadsafe(
+                    self._question_event.set
+                )
+
+            self._current_worker.cancel()
+            self._current_worker.wait(5000)  # 5s timeout for graceful cancel
+
+            # Hard kill if graceful cancel didn't work
+            if self._current_worker and self._current_worker.isRunning():
+                self._current_worker.terminate()
+                self._current_worker.wait()
+
             self._current_worker = None
-            self.status_changed.emit("idle", "")
-            self.task_changed.emit("")
+
+        # Reset plan state
+        if self._executing_plan:
+            steps = self._executing_plan.get("steps", [])
+            if 0 <= self._current_step_index < len(steps):
+                self.step_status_changed.emit(self._current_step_index, "failed")
+            self._executing_plan = None
+            self._current_step_index = -1
+        self._pending_plan = None
+        self._approval_event = None
+        self._question_event = None
+
+        self.status_changed.emit("cancelled", "")
+        self.task_changed.emit("")
+
+    @Slot()
+    def _on_agent_cancelled(self) -> None:
+        """Handle agent cancellation."""
+        if self._executing_plan:
+            steps = self._executing_plan.get("steps", [])
+            if 0 <= self._current_step_index < len(steps):
+                self.step_status_changed.emit(self._current_step_index, "failed")
+            self._executing_plan = None
+            self._current_step_index = -1
+        self._pending_plan = None
+
+        self.status_changed.emit("cancelled", "")
+        self.task_changed.emit("")
+        self.message_received.emit("System", "Request cancelled.")
+        self.history_entry.emit("Orchestrator", "Cancelled by user", "failed")

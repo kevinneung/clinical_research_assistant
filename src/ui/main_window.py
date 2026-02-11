@@ -137,6 +137,7 @@ class MainWindow(QMainWindow):
         if self.coordinator:
             # Connect chat panel to coordinator
             self.chat_panel.message_sent.connect(self._on_message_sent)
+            self.chat_panel.cancel_requested.connect(self.coordinator.stop)
 
             # Connect coordinator signals to UI
             self.coordinator.message_received.connect(self.chat_panel.append_message)
@@ -195,6 +196,7 @@ class MainWindow(QMainWindow):
         if self.coordinator:
             self.status_label.setText("Processing...")
             self.chat_panel.set_input_enabled(False)
+            self.chat_panel.set_cancel_mode(True)
             self.coordinator.run_async(message)
 
     @Slot(str, str)
@@ -205,10 +207,12 @@ class MainWindow(QMainWindow):
             "waiting": "Waiting for your response..." if agent == "Your response" else "Waiting for approval...",
             "completed": "Ready",
             "error": "Error occurred",
+            "cancelled": "Cancelled",
         }
         self.status_label.setText(status_messages.get(status, "Ready"))
 
-        if status in ("completed", "error"):
+        if status in ("completed", "error", "cancelled"):
+            self.chat_panel.set_cancel_mode(False)
             self.chat_panel.set_input_enabled(True)
 
     @Slot(str, dict)

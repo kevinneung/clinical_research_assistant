@@ -20,6 +20,7 @@ class ChatPanel(QWidget):
 
     message_sent = Signal(str)  # Emitted when user sends a message
     question_answered = Signal(str)  # Emitted when user answers an agent question
+    cancel_requested = Signal()  # Emitted when user clicks cancel
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -141,13 +142,40 @@ class ChatPanel(QWidget):
         self.question_answered.emit(answer)
 
     def set_input_enabled(self, enabled: bool) -> None:
-        """Enable or disable the input controls.
+        """Enable or disable the input field.
 
         Args:
             enabled: Whether input should be enabled.
         """
         self.input_field.setEnabled(enabled)
-        self.send_button.setEnabled(enabled)
+
+    def set_cancel_mode(self, active: bool) -> None:
+        """Toggle the send button between Send and Cancel modes.
+
+        Args:
+            active: True to show Cancel button, False to restore Send button.
+        """
+        if active:
+            self.send_button.setText("Cancel")
+            self.send_button.setObjectName("cancelButton")
+            self.send_button.setEnabled(True)
+            try:
+                self.send_button.clicked.disconnect()
+            except RuntimeError:
+                pass
+            self.send_button.clicked.connect(self.cancel_requested.emit)
+        else:
+            self.send_button.setText("Send")
+            self.send_button.setObjectName("")
+            self.send_button.setEnabled(True)
+            try:
+                self.send_button.clicked.disconnect()
+            except RuntimeError:
+                pass
+            self.send_button.clicked.connect(self.send_message)
+        # Force style refresh after objectName change
+        self.send_button.style().unpolish(self.send_button)
+        self.send_button.style().polish(self.send_button)
 
     def clear(self) -> None:
         """Clear all messages from the display."""

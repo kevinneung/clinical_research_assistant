@@ -86,6 +86,14 @@ def get_stylesheet() -> str:
         background-color: #E53935;
     }
 
+    QPushButton#cancelButton {
+        background-color: #f44336;
+    }
+
+    QPushButton#cancelButton:hover {
+        background-color: #E53935;
+    }
+
     QPushButton#secondaryButton {
         background-color: #757575;
     }
