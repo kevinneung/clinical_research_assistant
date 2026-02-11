@@ -20,15 +20,18 @@ A multi-agent clinical research assistant built with **Pydantic-AI**, **PySide6*
   - Execution plan viewer
   - Agent status monitoring
 
-## Quick Start (Windows)
+## Quick Start
 
 ### Prerequisites
 
-- [Python 3.11+](https://www.python.org/downloads/) (check "Add Python to PATH" during install)
-- [Node.js](https://nodejs.org) (optional, enables MCP tool servers)
+- **Python 3.11+**
+  - Windows: [python.org/downloads](https://www.python.org/downloads/) (check "Add Python to PATH" during install)
+  - macOS: `brew install python@3.13`
+  - Linux: `sudo apt install python3 python3-venv` (Ubuntu/Debian) or `sudo dnf install python3` (Fedora)
+- **Node.js** (optional, enables MCP tool servers) — [nodejs.org](https://nodejs.org) or `brew install node`
 - An [Anthropic API key](https://console.anthropic.com/settings/keys)
 
-### One-Click Setup
+### Windows
 
 1. Clone the repository:
    ```bash
@@ -46,9 +49,30 @@ A multi-agent clinical research assistant built with **Pydantic-AI**, **PySide6*
 
 > **Tip:** Right-click `launch.bat` → **Send to** → **Desktop (create shortcut)** for easy access.
 
+### macOS / Linux
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/kevinneung/clinical_research_assistant.git
+   cd clinical_research_assistant
+   ```
+
+2. Run the setup script:
+   ```bash
+   chmod +x setup.sh launch.sh
+   ./setup.sh
+   ```
+
+3. For subsequent launches:
+   ```bash
+   ./launch.sh
+   ```
+
+> **Tip (macOS):** Create an Automator "Application" that runs `./launch.sh` and drag it to your Dock.
+
 ### Manual Setup
 
-If you prefer to set things up yourself, or are on macOS/Linux:
+If you prefer to set things up yourself:
 
 1. Clone the repository:
    ```bash
@@ -58,7 +82,7 @@ If you prefer to set things up yourself, or are on macOS/Linux:
 
 2. Create a virtual environment and install dependencies:
    ```bash
-   python -m venv venv
+   python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -e .
    ```
