@@ -145,17 +145,18 @@ class AgentStatusPanel(QWidget):
             item.setForeground(Qt.red)
         elif action_lower.startswith("delegating"):
             item.setForeground(QColor("#1976D2"))  # Material blue
+        elif action_lower.startswith("question"):
+            item.setForeground(QColor("#F57F17"))  # Amber
         elif (
-            action_lower.startswith("question")
-            or "document saved" in action_lower
+            "document saved" in action_lower
             or "draft saved" in action_lower
             or "export complete" in action_lower
         ):
-            item.setForeground(QColor("#F57F17"))  # Amber
+            item.setForeground(QColor("#4CAF50"))  # Green
         elif action_lower.startswith("approval required"):
             item.setForeground(QColor("#FF9800"))  # Orange
         elif status == "completed":
-            item.setForeground(Qt.darkGreen)
+            item.setForeground(QColor("#4CAF50"))  # Green
 
         self.history_list.insertItem(0, item)
 
