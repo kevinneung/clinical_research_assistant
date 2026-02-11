@@ -119,6 +119,7 @@ class AgentCoordinator(QObject):
     approval_requested = Signal(str, dict)  # action, details
     question_asked = Signal(str, list)  # question text, options list
     plan_updated = Signal(dict)  # plan data
+    step_status_changed = Signal(int, str)  # step_index, status
     status_changed = Signal(str, str)  # status, agent
     task_changed = Signal(str)  # task description
     history_entry = Signal(str, str, str)  # agent, action, status
@@ -135,6 +136,8 @@ class AgentCoordinator(QObject):
         self._current_worker: AgentWorker | None = None
         self._mcp_toolsets = None
         self._pending_plan: dict | None = None
+        self._executing_plan: dict | None = None
+        self._current_step_index: int = -1
 
     def run_async(self, prompt: str) -> None:
         """Run the orchestrator agent with the given prompt.
@@ -288,6 +291,17 @@ class AgentCoordinator(QObject):
         self.message_received.emit("Assistant", f"**{status}**: {details}")
         self.history_entry.emit("Orchestrator", f"{status}: {details}", "running")
 
+        # Track step progress during plan execution
+        if status == "Delegating" and self._executing_plan:
+            steps = self._executing_plan.get("steps", [])
+            # Mark previous step as completed
+            if 0 <= self._current_step_index < len(steps):
+                self.step_status_changed.emit(self._current_step_index, "completed")
+            # Advance to next step and mark it running
+            self._current_step_index += 1
+            if self._current_step_index < len(steps):
+                self.step_status_changed.emit(self._current_step_index, "running")
+
     async def _ask_question(self, question: str, options: list[str]) -> str:
         """Ask the researcher a multiple-choice question via the UI.
 
@@ -387,6 +401,12 @@ class AgentCoordinator(QObject):
             )
         else:
             # Plain string result (execution summary) — just display it
+            # Mark all plan steps as completed
+            if self._executing_plan:
+                for i in range(len(self._executing_plan.get("steps", []))):
+                    self.step_status_changed.emit(i, "completed")
+                self._executing_plan = None
+                self._current_step_index = -1
             self.status_changed.emit("completed", "")
             self.task_changed.emit("")
             self.message_received.emit("Assistant", str(output))
@@ -399,6 +419,12 @@ class AgentCoordinator(QObject):
         Args:
             error: Error message.
         """
+        # Mark current step as failed during plan execution
+        if self._executing_plan:
+            if 0 <= self._current_step_index < len(self._executing_plan.get("steps", [])):
+                self.step_status_changed.emit(self._current_step_index, "failed")
+            self._executing_plan = None
+            self._current_step_index = -1
         friendly = _format_user_error(error)
         self.status_changed.emit("error", "")
         self.task_changed.emit("")
@@ -428,6 +454,8 @@ class AgentCoordinator(QObject):
         if notes:
             execution_prompt += f"\n\nResearcher notes: {notes}"
 
+        self._executing_plan = plan_data
+        self._current_step_index = -1
         self.run_async(execution_prompt)
 
     def stop(self) -> None:

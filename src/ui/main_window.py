@@ -144,6 +144,7 @@ class MainWindow(QMainWindow):
             self.coordinator.question_asked.connect(self.chat_panel.show_question)
             self.chat_panel.question_answered.connect(self.coordinator.handle_question_response)
             self.coordinator.plan_updated.connect(self.plan_viewer.update_plan)
+            self.coordinator.step_status_changed.connect(self.plan_viewer.update_step_status)
             self.coordinator.status_changed.connect(self._on_status_changed)
 
     @Slot()
