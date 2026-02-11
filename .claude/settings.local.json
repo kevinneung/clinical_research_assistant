@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(venvScriptspython -c \"from src.agents.base import AgentDeps; print\\(''AgentDeps fields:'', list\\(AgentDeps.__dataclass_fields__.keys\\(\\)\\)\\)\")",
+      "Bash(\"venv/Scripts/python.exe\" -c \"from src.ui.question_widget import QuestionWidget; print\\(''QuestionWidget imported OK''\\); from src.ui import QuestionWidget; print\\(''__init__ export OK''\\)\")"
+    ]
+  }
+}
