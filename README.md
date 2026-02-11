@@ -20,53 +20,61 @@ A multi-agent clinical research assistant built with **Pydantic-AI**, **PySide6*
   - Execution plan viewer
   - Agent status monitoring
 
-## Installation
+## Quick Start (Windows)
 
 ### Prerequisites
 
-- Python 3.11 or higher
-- Node.js (for MCP servers)
+- [Python 3.11+](https://www.python.org/downloads/) (check "Add Python to PATH" during install)
+- [Node.js](https://nodejs.org) (optional, enables MCP tool servers)
+- An [Anthropic API key](https://console.anthropic.com/settings/keys)
 
-### Setup
+### One-Click Setup
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/clinical_research_assistant.git
+   git clone https://github.com/kevinneung/clinical_research_assistant.git
+   ```
+
+2. Double-click **`setup.bat`** in the project folder. It will:
+   - Verify your Python version
+   - Create a virtual environment
+   - Install all dependencies
+   - Prompt you for your API key(s) and create a `.env` file
+   - Offer to launch the app
+
+3. For subsequent launches, double-click **`launch.bat`**.
+
+> **Tip:** Right-click `launch.bat` → **Send to** → **Desktop (create shortcut)** for easy access.
+
+### Manual Setup
+
+If you prefer to set things up yourself, or are on macOS/Linux:
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/kevinneung/clinical_research_assistant.git
    cd clinical_research_assistant
    ```
 
-2. Create a virtual environment:
+2. Create a virtual environment and install dependencies:
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
    pip install -e .
    ```
 
-4. Set up environment variables:
-   ```bash
-   # Required
-   export ANTHROPIC_API_KEY="your-api-key"
+3. Create a `.env` file in the project root (see `.env.example`):
+   ```
+   ANTHROPIC_API_KEY=your-api-key
+   BRAVE_API_KEY=your-brave-api-key   # optional
+   ```
 
-   # Optional - for web search functionality
-   export BRAVE_API_KEY="your-brave-api-key"
+4. Run the application:
+   ```bash
+   python -m src.main
    ```
 
 ## Usage
-
-### Running the Application
-
-```bash
-python -m src.main
-```
-
-Or if installed:
-```bash
-clinical-assistant
-```
 
 ### Example Workflows
 
