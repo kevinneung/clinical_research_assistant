@@ -1,11 +1,17 @@
 """Application configuration management."""
 
 import os
+import shutil
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
 
 from dotenv import load_dotenv
+
+
+def check_npx_available() -> bool:
+    """Check whether npx (Node.js) is available on the system PATH."""
+    return shutil.which("npx") is not None
 
 
 @dataclass
@@ -31,6 +37,9 @@ class AppConfig:
     # Logging
     log_level: str = "INFO"
     log_file: Path | None = None
+
+    # Runtime capabilities
+    npx_available: bool = True
 
     def __post_init__(self):
         """Ensure directories exist after initialization."""
@@ -72,6 +81,8 @@ class AppConfig:
         if log_file := os.environ.get("CRA_LOG_FILE"):
             config.log_file = Path(log_file)
 
+        config.npx_available = check_npx_available()
+
         # Ensure directories exist
         config.__post_init__()
 
@@ -90,6 +101,11 @@ class AppConfig:
 
         if not self.app_data_dir.exists():
             errors.append(f"App data directory does not exist: {self.app_data_dir}")
+
+        if not self.npx_available:
+            errors.append(
+                "Node.js/npx is not installed. MCP tool servers will be unavailable."
+            )
 
         return errors
 
@@ -110,6 +126,7 @@ class AppConfig:
             "log_file": str(self.log_file) if self.log_file else None,
             "has_anthropic_key": bool(self.anthropic_api_key),
             "has_brave_key": bool(self.brave_api_key),
+            "npx_available": self.npx_available,
         }
 
 

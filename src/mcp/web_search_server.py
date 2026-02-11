@@ -22,4 +22,5 @@ def create_web_search_server(api_key: str | None = None) -> MCPServerStdio | Non
         "npx",
         args=["-y", "@anthropic/mcp-server-brave-search"],
         env={"BRAVE_API_KEY": api_key},
+        timeout=30,
     )

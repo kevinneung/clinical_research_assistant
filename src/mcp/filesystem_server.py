@@ -18,4 +18,5 @@ def create_filesystem_server(workspace_path: str | Path) -> MCPServerStdio:
     return MCPServerStdio(
         "npx",
         args=["-y", "@anthropic/mcp-server-filesystem", workspace_path],
+        timeout=30,
     )

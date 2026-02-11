@@ -126,6 +126,17 @@ def main():
                 "You can still explore the interface, but agent features will not work."
             )
 
+        # Check for Node.js/npx
+        if not config.npx_available:
+            QMessageBox.warning(
+                window,
+                "Node.js Not Found",
+                "Node.js (npx) was not found on your system.\n\n"
+                "MCP tool servers require Node.js to run. Without it, agents will "
+                "still work but won't have access to filesystem or web-search tools.\n\n"
+                "Install Node.js from https://nodejs.org to enable full functionality."
+            )
+
         # Run application
         exit_code = app.exec()
 

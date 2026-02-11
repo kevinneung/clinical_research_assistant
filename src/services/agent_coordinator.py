@@ -9,7 +9,7 @@ from PySide6.QtCore import QObject, Signal, Slot, QThread
 from sqlalchemy.orm import Session
 
 from src.agents import orchestrator_agent, AgentDeps
-from src.mcp import create_mcp_toolsets
+from src.mcp import create_mcp_toolsets, MCPToolsets
 from src.models import AgentRun, Approval
 from src.utils.config import get_config
 
@@ -26,6 +26,46 @@ def _format_error(exc: BaseException) -> str:
             parts.append(f"\n--- Sub-exception {i} ---\n{tb}")
         return "\n".join(parts)
     return "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+
+
+def _is_mcp_error(exc: BaseException) -> bool:
+    """Check whether an exception was caused by MCP server startup failure.
+
+    Recursively inspects ExceptionGroups for known MCP-related errors
+    (TimeoutError, FileNotFoundError, ConnectionError, OSError).
+    """
+    mcp_types = (TimeoutError, FileNotFoundError, ConnectionError, OSError)
+    if isinstance(exc, mcp_types):
+        return True
+    if isinstance(exc, BaseExceptionGroup):
+        return any(_is_mcp_error(sub) for sub in exc.exceptions)
+    if exc.__cause__ is not None:
+        return _is_mcp_error(exc.__cause__)
+    return False
+
+
+def _format_user_error(error: str) -> str:
+    """Map known error patterns to user-friendly messages."""
+    lower = error.lower()
+    if "npx" in lower and ("not found" in lower or "no such file" in lower):
+        return (
+            "Node.js (npx) is not installed or not on your PATH.\n"
+            "Install it from https://nodejs.org to enable MCP tools.\n"
+            "Agents will still work without tool access."
+        )
+    if "timeout" in lower or "timedout" in lower:
+        return (
+            "An MCP tool server timed out while starting. This can happen on "
+            "the first run while packages are downloaded.\n"
+            "The request will be retried without tools. You can try again later "
+            "once the packages are cached."
+        )
+    if "api_key" in lower or "authentication" in lower or "401" in lower:
+        return (
+            "API authentication failed. Please check that your ANTHROPIC_API_KEY "
+            "is set correctly in your .env file."
+        )
+    return error
 
 
 def _format_plan_message(plan_data: dict) -> str:
@@ -136,7 +176,10 @@ class AgentCoordinator(QObject):
 
         # Initialize MCP toolsets
         if self._mcp_toolsets is None:
-            self._mcp_toolsets = create_mcp_toolsets(self.project.workspace_path)
+            self._mcp_toolsets = create_mcp_toolsets(
+                self.project.workspace_path,
+                npx_available=get_config().npx_available,
+            )
 
         # Create agent run record
         agent_run = AgentRun(
@@ -165,12 +208,28 @@ class AgentCoordinator(QObject):
             # Run agent with MCP servers passed as toolsets
             mcp_servers = deps.get_active_mcp_servers()
 
-            result = await orchestrator_agent.run(
-                prompt,
-                deps=deps,
-                model=get_config().default_model,
-                toolsets=mcp_servers,
-            )
+            try:
+                result = await orchestrator_agent.run(
+                    prompt,
+                    deps=deps,
+                    model=get_config().default_model,
+                    toolsets=mcp_servers,
+                )
+            except BaseException as mcp_exc:
+                if mcp_servers and _is_mcp_error(mcp_exc):
+                    # MCP server failed — notify user and retry without tools
+                    self._send_progress(
+                        "MCP Unavailable",
+                        "Tool servers failed to start. Retrying without tools...",
+                    )
+                    self._mcp_toolsets = MCPToolsets()
+                    result = await orchestrator_agent.run(
+                        prompt,
+                        deps=deps,
+                        model=get_config().default_model,
+                    )
+                else:
+                    raise
 
             # Update agent run record
             agent_run.complete(
@@ -340,10 +399,11 @@ class AgentCoordinator(QObject):
         Args:
             error: Error message.
         """
+        friendly = _format_user_error(error)
         self.status_changed.emit("error", "")
         self.task_changed.emit("")
-        self.message_received.emit("System", f"Error: {error}")
-        self.history_entry.emit("Orchestrator", f"Error: {error}", "failed")
+        self.message_received.emit("System", f"Error: {friendly}")
+        self.history_entry.emit("Orchestrator", f"Error: {friendly}", "failed")
 
     def _execute_plan(self, plan_data: dict, notes: str = "") -> None:
         """Run the orchestrator again to execute an approved plan.

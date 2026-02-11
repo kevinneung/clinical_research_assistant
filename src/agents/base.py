@@ -33,7 +33,9 @@ class AgentDeps:
 
     def get_active_mcp_servers(self) -> list:
         """Get list of active MCP servers."""
-        servers = [self.mcp_filesystem]
+        servers = []
+        if self.mcp_filesystem is not None:
+            servers.append(self.mcp_filesystem)
         if self.mcp_web_search is not None:
             servers.append(self.mcp_web_search)
         if self.mcp_email is not None:

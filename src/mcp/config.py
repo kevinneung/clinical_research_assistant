@@ -12,26 +12,35 @@ from pydantic_ai.mcp import MCPServerStdio
 class MCPToolsets:
     """Container for MCP server connections."""
 
-    filesystem: MCPServerStdio
+    filesystem: MCPServerStdio | None = None
     web_search: MCPServerStdio | None = None
     email: Any | None = None  # MCPServerHTTP when available
 
 
-def create_mcp_toolsets(workspace_path: str | Path) -> MCPToolsets:
+def create_mcp_toolsets(
+    workspace_path: str | Path,
+    npx_available: bool = True,
+) -> MCPToolsets:
     """Create MCP server connections for agent use.
 
     Args:
         workspace_path: Path to the workspace directory for filesystem access.
+        npx_available: Whether npx is available on the system.
 
     Returns:
         MCPToolsets containing configured MCP servers.
     """
+    if not npx_available:
+        return MCPToolsets()
+
     workspace_path = str(Path(workspace_path).resolve())
 
     # Filesystem MCP server - always available
+    # timeout=30 because npx may need to download the package on first run
     filesystem = MCPServerStdio(
         "npx",
         args=["-y", "@modelcontextprotocol/server-filesystem", workspace_path],
+        timeout=30,
     )
 
     # Web search MCP server - requires BRAVE_API_KEY
@@ -42,6 +51,7 @@ def create_mcp_toolsets(workspace_path: str | Path) -> MCPToolsets:
             "npx",
             args=["-y", "@modelcontextprotocol/server-brave-search"],
             env={"BRAVE_API_KEY": brave_api_key},
+            timeout=30,
         )
 
     return MCPToolsets(
@@ -60,7 +70,10 @@ def get_mcp_servers_for_agent(toolsets: MCPToolsets) -> list:
     Returns:
         List of active MCP server instances.
     """
-    servers = [toolsets.filesystem]
+    servers = []
+
+    if toolsets.filesystem is not None:
+        servers.append(toolsets.filesystem)
 
     if toolsets.web_search is not None:
         servers.append(toolsets.web_search)
