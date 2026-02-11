@@ -412,7 +412,8 @@ class AgentCoordinator(QObject):
             self.approval_requested.emit(
                 "Execute this plan?",
                 {"goal": plan_data.get("goal", ""),
-                 "steps": len(plan_data.get("steps", []))},
+                 "steps": plan_data.get("steps", []),
+                 "estimated_agents": plan_data.get("estimated_agents", [])},
             )
         else:
             # Plain string result (execution summary) — just display it
