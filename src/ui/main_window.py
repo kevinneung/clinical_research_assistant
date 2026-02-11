@@ -13,9 +13,9 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
 )
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Slot, QEasingCurve, QSequentialAnimationGroup, QPropertyAnimation
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QDialog
+from PySide6.QtWidgets import QDialog, QGraphicsOpacityEffect
 
 from .chat_panel import ChatPanel
 from .workspace_panel import WorkspacePanel
@@ -128,6 +128,34 @@ class MainWindow(QMainWindow):
     def _setup_status_bar(self) -> None:
         """Set up the status bar."""
         status_bar = QStatusBar()
+
+        # Pulsing activity dot
+        self._status_dot = QLabel("●")
+        self._status_dot.setStyleSheet("color: #2196F3; font-size: 14px;")
+        self._status_dot.setVisible(False)
+
+        self._dot_opacity = QGraphicsOpacityEffect(self._status_dot)
+        self._dot_opacity.setOpacity(1.0)
+        self._status_dot.setGraphicsEffect(self._dot_opacity)
+
+        dot_fade_out = QPropertyAnimation(self._dot_opacity, b"opacity")
+        dot_fade_out.setDuration(600)
+        dot_fade_out.setStartValue(1.0)
+        dot_fade_out.setEndValue(0.2)
+        dot_fade_out.setEasingCurve(QEasingCurve.InOutSine)
+
+        dot_fade_in = QPropertyAnimation(self._dot_opacity, b"opacity")
+        dot_fade_in.setDuration(600)
+        dot_fade_in.setStartValue(0.2)
+        dot_fade_in.setEndValue(1.0)
+        dot_fade_in.setEasingCurve(QEasingCurve.InOutSine)
+
+        self._dot_pulse = QSequentialAnimationGroup()
+        self._dot_pulse.addAnimation(dot_fade_out)
+        self._dot_pulse.addAnimation(dot_fade_in)
+        self._dot_pulse.setLoopCount(-1)
+
+        status_bar.addWidget(self._status_dot)
         self.status_label = QLabel("Ready")
         status_bar.addWidget(self.status_label)
         self.setStatusBar(status_bar)
@@ -210,6 +238,22 @@ class MainWindow(QMainWindow):
             "cancelled": "Cancelled",
         }
         self.status_label.setText(status_messages.get(status, "Ready"))
+
+        # Pulse the status bar dot for active states
+        if status == "running":
+            self._status_dot.setStyleSheet("color: #2196F3; font-size: 14px;")
+            self._status_dot.setVisible(True)
+            if self._dot_pulse.state() != QSequentialAnimationGroup.Running:
+                self._dot_pulse.start()
+        elif status == "waiting":
+            self._status_dot.setStyleSheet("color: #FF9800; font-size: 14px;")
+            self._status_dot.setVisible(True)
+            if self._dot_pulse.state() != QSequentialAnimationGroup.Running:
+                self._dot_pulse.start()
+        else:
+            self._dot_pulse.stop()
+            self._dot_opacity.setOpacity(1.0)
+            self._status_dot.setVisible(False)
 
         if status in ("completed", "error", "cancelled"):
             self.chat_panel.set_cancel_mode(False)

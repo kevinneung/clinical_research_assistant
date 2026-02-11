@@ -11,8 +11,9 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QFrame,
 )
-from PySide6.QtCore import Slot, Qt
+from PySide6.QtCore import Slot, Qt, QEasingCurve, QSequentialAnimationGroup, QPropertyAnimation
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QGraphicsOpacityEffect
 
 
 class AgentStatusPanel(QWidget):
@@ -40,6 +41,28 @@ class AgentStatusPanel(QWidget):
         self.status_indicator = QLabel("● Idle")
         self.status_indicator.setStyleSheet("color: #9E9E9E; font-weight: bold;")
         status_layout.addWidget(self.status_indicator)
+
+        # Pulse animation for the status indicator
+        self._opacity_effect = QGraphicsOpacityEffect(self.status_indicator)
+        self._opacity_effect.setOpacity(1.0)
+        self.status_indicator.setGraphicsEffect(self._opacity_effect)
+
+        fade_out = QPropertyAnimation(self._opacity_effect, b"opacity")
+        fade_out.setDuration(800)
+        fade_out.setStartValue(1.0)
+        fade_out.setEndValue(0.3)
+        fade_out.setEasingCurve(QEasingCurve.InOutSine)
+
+        fade_in = QPropertyAnimation(self._opacity_effect, b"opacity")
+        fade_in.setDuration(800)
+        fade_in.setStartValue(0.3)
+        fade_in.setEndValue(1.0)
+        fade_in.setEasingCurve(QEasingCurve.InOutSine)
+
+        self._pulse_group = QSequentialAnimationGroup()
+        self._pulse_group.addAnimation(fade_out)
+        self._pulse_group.addAnimation(fade_in)
+        self._pulse_group.setLoopCount(-1)
 
         self.current_agent_label = QLabel("No active agent")
         self.current_agent_label.setStyleSheet("color: #666666;")
@@ -103,6 +126,14 @@ class AgentStatusPanel(QWidget):
         color = status_colors.get(status.lower(), "#9E9E9E")
         self.status_indicator.setText(f"● {status.title()}")
         self.status_indicator.setStyleSheet(f"color: {color}; font-weight: bold;")
+
+        # Start or stop the pulse animation
+        if status.lower() in ("running", "waiting"):
+            if self._pulse_group.state() != QSequentialAnimationGroup.Running:
+                self._pulse_group.start()
+        else:
+            self._pulse_group.stop()
+            self._opacity_effect.setOpacity(1.0)
 
         if agent:
             self.current_agent_label.setText(f"Agent: {agent}")
@@ -183,6 +214,8 @@ class AgentStatusPanel(QWidget):
 
     def reset(self) -> None:
         """Reset the panel to idle state."""
+        self._pulse_group.stop()
+        self._opacity_effect.setOpacity(1.0)
         self.set_status("idle")
         self.current_task_label.setText("")
         self.agents_list.clearSelection()
