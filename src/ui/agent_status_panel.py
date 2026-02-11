@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QFrame,
 )
 from PySide6.QtCore import Slot, Qt
+from PySide6.QtGui import QColor
 
 
 class AgentStatusPanel(QWidget):
@@ -138,9 +139,21 @@ class AgentStatusPanel(QWidget):
 
         item = QListWidgetItem(f"{timestamp} {icon} [{agent}] {action}")
 
-        # Color based on status
+        # Color based on status and action type
+        action_lower = action.lower()
         if status == "failed":
             item.setForeground(Qt.red)
+        elif action_lower.startswith("delegating"):
+            item.setForeground(QColor("#1976D2"))  # Material blue
+        elif (
+            action_lower.startswith("question")
+            or "document saved" in action_lower
+            or "draft saved" in action_lower
+            or "export complete" in action_lower
+        ):
+            item.setForeground(QColor("#F57F17"))  # Amber
+        elif action_lower.startswith("approval required"):
+            item.setForeground(QColor("#FF9800"))  # Orange
         elif status == "completed":
             item.setForeground(Qt.darkGreen)
 
