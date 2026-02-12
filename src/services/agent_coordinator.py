@@ -8,6 +8,8 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot, QThread
 from sqlalchemy.orm import Session
 
+from mcp.shared.exceptions import McpError
+
 from src.agents import orchestrator_agent, AgentDeps
 from src.mcp import create_mcp_toolsets, MCPToolsets
 from src.models import AgentRun, Approval
@@ -34,7 +36,7 @@ def _is_mcp_error(exc: BaseException) -> bool:
     Recursively inspects ExceptionGroups for known MCP-related errors
     (TimeoutError, FileNotFoundError, ConnectionError, OSError).
     """
-    mcp_types = (TimeoutError, FileNotFoundError, ConnectionError, OSError)
+    mcp_types = (TimeoutError, FileNotFoundError, ConnectionError, OSError, McpError)
     if isinstance(exc, mcp_types):
         return True
     if isinstance(exc, BaseExceptionGroup):
@@ -59,6 +61,12 @@ def _format_user_error(error: str) -> str:
             "the first run while packages are downloaded.\n"
             "The request will be retried without tools. You can try again later "
             "once the packages are cached."
+        )
+    if "connection closed" in lower:
+        return (
+            "An MCP tool server connection was lost. This can happen when "
+            "Node.js/npx has trouble keeping the server process alive.\n"
+            "The request will be retried without tools."
         )
     if "api_key" in lower or "authentication" in lower or "401" in lower:
         return (
@@ -192,12 +200,13 @@ class AgentCoordinator(QObject):
         if self._current_worker:
             self._current_worker.loop = asyncio.get_running_loop()
 
-        # Initialize MCP toolsets
-        if self._mcp_toolsets is None:
-            self._mcp_toolsets = create_mcp_toolsets(
-                self.project.workspace_path,
-                npx_available=get_config().npx_available,
-            )
+        # Create fresh MCP toolsets for each run.
+        # MCPServerStdio objects cannot be reused after agent.run() exits
+        # their async context and shuts down the subprocess.
+        self._mcp_toolsets = create_mcp_toolsets(
+            self.project.workspace_path,
+            npx_available=get_config().npx_available,
+        )
 
         # Create agent run record
         agent_run = AgentRun(
