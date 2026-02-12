@@ -61,10 +61,20 @@ File organization:
 - Include document metadata at the top
 """
 
+def _get_document_maker_instructions(ctx: RunContext[AgentDeps]) -> str:
+    """Return document maker instructions, appending any user customizations."""
+    from src.services.prompt_store import PromptStore
+
+    custom = PromptStore().get("document_maker")
+    if custom:
+        return DOCUMENT_MAKER_INSTRUCTIONS + f"\n\n## Additional User Instructions\n{custom}"
+    return DOCUMENT_MAKER_INSTRUCTIONS
+
+
 document_maker_agent = Agent(
     deps_type=AgentDeps,
     output_type=ComplianceDocument,
-    instructions=DOCUMENT_MAKER_INSTRUCTIONS,
+    instructions=_get_document_maker_instructions,
 )
 
 

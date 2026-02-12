@@ -1,5 +1,7 @@
 """Approval dialog for human-in-the-loop decisions."""
 
+from enum import Enum
+
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -13,6 +15,13 @@ from PySide6.QtWidgets import (
     QFrame,
 )
 from PySide6.QtCore import Qt
+
+
+class ApprovalResult(Enum):
+    """Three-way result for approval dialogs."""
+    APPROVED = "approved"
+    DENIED = "denied"
+    REVISE = "revise"
 
 # Agent display names and colors
 AGENT_DISPLAY_NAMES = {
@@ -31,7 +40,7 @@ AGENT_COLORS = {
 class ApprovalDialog(QDialog):
     """Modal dialog for human approval of agent actions."""
 
-    def __init__(self, action: str, details: dict, parent=None):
+    def __init__(self, action: str, details: dict, parent=None, *, show_revise: bool = False):
         super().__init__(parent)
         self.setWindowTitle("Action Requires Approval")
         self.setMinimumWidth(500)
@@ -41,6 +50,8 @@ class ApprovalDialog(QDialog):
             self.windowFlags() & ~Qt.WindowContextHelpButtonHint
         )
 
+        self._show_revise = show_revise
+        self._result = ApprovalResult.DENIED
         self._setup_ui(action, details)
 
     def _setup_ui(self, action: str, details: dict) -> None:
@@ -98,13 +109,20 @@ class ApprovalDialog(QDialog):
         self.deny_btn = QPushButton("Deny")
         self.deny_btn.setObjectName("denyButton")
         self.deny_btn.setMinimumWidth(100)
-        self.deny_btn.clicked.connect(self.reject)
+        self.deny_btn.clicked.connect(self._on_deny)
         button_layout.addWidget(self.deny_btn)
+
+        if self._show_revise:
+            self.revise_btn = QPushButton("Revise")
+            self.revise_btn.setObjectName("reviseButton")
+            self.revise_btn.setMinimumWidth(100)
+            self.revise_btn.clicked.connect(self._on_revise)
+            button_layout.addWidget(self.revise_btn)
 
         self.approve_btn = QPushButton("Approve")
         self.approve_btn.setObjectName("approveButton")
         self.approve_btn.setMinimumWidth(100)
-        self.approve_btn.clicked.connect(self.accept)
+        self.approve_btn.clicked.connect(self._on_approve)
         self.approve_btn.setDefault(True)
         button_layout.addWidget(self.approve_btn)
 
@@ -253,6 +271,18 @@ class ApprovalDialog(QDialog):
 
         return "\n".join(lines)
 
+    def _on_approve(self) -> None:
+        self._result = ApprovalResult.APPROVED
+        self.accept()
+
+    def _on_deny(self) -> None:
+        self._result = ApprovalResult.DENIED
+        self.reject()
+
+    def _on_revise(self) -> None:
+        self._result = ApprovalResult.REVISE
+        self.done(2)
+
     def get_notes(self) -> str:
         """Get the researcher's notes.
 
@@ -261,10 +291,10 @@ class ApprovalDialog(QDialog):
         """
         return self.notes_input.toPlainText()
 
-    def get_result(self) -> tuple[bool, str]:
+    def get_result(self) -> tuple[ApprovalResult, str]:
         """Get the approval result and notes.
 
         Returns:
-            Tuple of (approved, notes).
+            Tuple of (ApprovalResult, notes).
         """
-        return (self.result() == QDialog.Accepted, self.get_notes())
+        return (self._result, self.get_notes())

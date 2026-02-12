@@ -94,6 +94,14 @@ def get_stylesheet() -> str:
         background-color: #E53935;
     }
 
+    QPushButton#reviseButton {
+        background-color: #FF9800;
+    }
+
+    QPushButton#reviseButton:hover {
+        background-color: #F57C00;
+    }
+
     QPushButton#secondaryButton {
         background-color: #757575;
     }

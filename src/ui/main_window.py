@@ -59,6 +59,13 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        settings_action = QAction("&Settings...", self)
+        settings_action.setShortcut("Ctrl+,")
+        settings_action.triggered.connect(self._on_settings)
+        file_menu.addAction(settings_action)
+
+        file_menu.addSeparator()
+
         exit_action = QAction("E&xit", self)
         exit_action.setShortcut("Alt+F4")
         exit_action.triggered.connect(self.close)
@@ -218,6 +225,14 @@ class MainWindow(QMainWindow):
             "Built with Pydantic-AI, PySide6, and SQLite.",
         )
 
+    @Slot()
+    def _on_settings(self) -> None:
+        """Open the Settings dialog."""
+        from .settings_dialog import SettingsDialog
+
+        dialog = SettingsDialog(self)
+        dialog.exec()
+
     @Slot(str)
     def _on_message_sent(self, message: str) -> None:
         """Handle message sent from chat panel."""
@@ -262,15 +277,25 @@ class MainWindow(QMainWindow):
     @Slot(str, dict)
     def _on_approval_requested(self, action: str, details: dict) -> None:
         """Handle approval request from agent."""
-        from .approval_dialog import ApprovalDialog
+        from .approval_dialog import ApprovalDialog, ApprovalResult
 
-        dialog = ApprovalDialog(action, details, self)
-        result = dialog.exec()
+        # Show Revise button only for plan approvals (when a pending plan exists)
+        show_revise = (
+            self.coordinator is not None
+            and self.coordinator._pending_plan is not None
+        )
+
+        dialog = ApprovalDialog(action, details, self, show_revise=show_revise)
+        dialog.exec()
 
         if self.coordinator:
-            approved = result == QDialog.Accepted
-            notes = dialog.get_notes()
-            self.coordinator.handle_approval_response(approved, notes)
+            result, notes = dialog.get_result()
+            if result == ApprovalResult.APPROVED:
+                self.coordinator.handle_approval_response(True, notes)
+            elif result == ApprovalResult.REVISE:
+                self.coordinator.handle_revision_request()
+            else:
+                self.coordinator.handle_approval_response(False, notes)
 
     def set_status(self, message: str) -> None:
         """Update the status bar message."""

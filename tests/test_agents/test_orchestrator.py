@@ -63,7 +63,9 @@ class TestOrchestratorAgent:
     def test_agent_has_instructions(self):
         """Test that the agent has proper instructions."""
         assert orchestrator_agent._instructions is not None
-        assert "clinical research" in orchestrator_agent._instructions.lower()
+        # Instructions are now a callable; verify by checking the constant
+        from src.agents.orchestrator import ORCHESTRATOR_INSTRUCTIONS
+        assert "clinical research" in ORCHESTRATOR_INSTRUCTIONS.lower()
 
     def test_agent_has_tools(self):
         """Test that the agent has the expected tools."""

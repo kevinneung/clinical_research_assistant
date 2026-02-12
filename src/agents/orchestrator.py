@@ -54,10 +54,20 @@ When using MCP tools:
 - Use web search (if available) to research costs, regulations, and best practices
 """
 
+def _get_orchestrator_instructions(ctx: RunContext[AgentDeps]) -> str:
+    """Return orchestrator instructions, appending any user customizations."""
+    from src.services.prompt_store import PromptStore
+
+    custom = PromptStore().get("orchestrator")
+    if custom:
+        return ORCHESTRATOR_INSTRUCTIONS + f"\n\n## Additional User Instructions\n{custom}"
+    return ORCHESTRATOR_INSTRUCTIONS
+
+
 orchestrator_agent = Agent(
     deps_type=AgentDeps,
     output_type=TaskPlan | str,
-    instructions=ORCHESTRATOR_INSTRUCTIONS,
+    instructions=_get_orchestrator_instructions,
 )
 
 

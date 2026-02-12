@@ -54,10 +54,20 @@ Format guidelines:
 - Appropriate urgency indicators when needed
 """
 
+def _get_email_drafter_instructions(ctx: RunContext[AgentDeps]) -> str:
+    """Return email drafter instructions, appending any user customizations."""
+    from src.services.prompt_store import PromptStore
+
+    custom = PromptStore().get("email_drafter")
+    if custom:
+        return EMAIL_DRAFTER_INSTRUCTIONS + f"\n\n## Additional User Instructions\n{custom}"
+    return EMAIL_DRAFTER_INSTRUCTIONS
+
+
 email_drafter_agent = Agent(
     deps_type=AgentDeps,
     output_type=DraftEmail,
-    instructions=EMAIL_DRAFTER_INSTRUCTIONS,
+    instructions=_get_email_drafter_instructions,
 )
 
 

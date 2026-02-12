@@ -165,6 +165,7 @@ class AgentCoordinator(QObject):
         self._current_worker: AgentWorker | None = None
         self._mcp_toolsets = None
         self._pending_plan: dict | None = None
+        self._revision_plan: dict | None = None
         self._executing_plan: dict | None = None
         self._current_step_index: int = -1
 
@@ -174,12 +175,20 @@ class AgentCoordinator(QObject):
         This method starts the agent in a background thread and returns
         immediately. Results are delivered via signals.
 
+        If a revision plan is pending, the prompt is treated as feedback
+        and a revision request is built automatically.
+
         Args:
             prompt: The user's prompt to process.
         """
         if self._current_worker and self._current_worker.isRunning():
             self.message_received.emit("System", "An agent is already running. Please wait.")
             return
+
+        # If we're in revision mode, build a revision prompt
+        if self._revision_plan is not None:
+            prompt = self._build_revision_prompt(self._revision_plan, prompt)
+            self._revision_plan = None
 
         # Create the coroutine
         coro = self._run_orchestrator(prompt)
@@ -400,6 +409,47 @@ class AgentCoordinator(QObject):
                     self._approval_event.set
                 )
 
+    def handle_revision_request(self) -> None:
+        """Move the pending plan into revision state.
+
+        The plan stays visible in the PlanViewer. Chat input is re-enabled
+        so the user can type feedback. The next ``run_async()`` call will
+        automatically wrap the feedback into a revision prompt.
+        """
+        if self._pending_plan is None:
+            return
+        self._revision_plan = self._pending_plan
+        self._pending_plan = None
+        self.message_received.emit(
+            "System",
+            "Type your feedback below and press Send to revise the plan.",
+        )
+        self.status_changed.emit("completed", "")
+
+    @staticmethod
+    def _build_revision_prompt(plan_data: dict, feedback: str) -> str:
+        """Build an orchestrator prompt requesting a revised TaskPlan.
+
+        Args:
+            plan_data: The original plan dict.
+            feedback: The researcher's revision feedback.
+
+        Returns:
+            A prompt string for the orchestrator.
+        """
+        steps_text = "\n".join(
+            f"  {i}. [{s.get('agent')}] {s.get('description')}"
+            for i, s in enumerate(plan_data.get("steps", []), 1)
+        )
+        return (
+            f"The researcher wants to revise the following plan.\n\n"
+            f"Original plan goal: {plan_data.get('goal', '')}\n"
+            f"Original steps:\n{steps_text}\n\n"
+            f"Researcher feedback: {feedback}\n\n"
+            f"Please produce a revised TaskPlan that addresses the feedback. "
+            f"Return only the revised plan as a structured TaskPlan, not free text."
+        )
+
     @Slot(object)
     def _on_agent_finished(self, result: Any) -> None:
         """Handle agent completion.
@@ -521,6 +571,7 @@ class AgentCoordinator(QObject):
             self._executing_plan = None
             self._current_step_index = -1
         self._pending_plan = None
+        self._revision_plan = None
         self._approval_event = None
         self._question_event = None
 
@@ -537,6 +588,7 @@ class AgentCoordinator(QObject):
             self._executing_plan = None
             self._current_step_index = -1
         self._pending_plan = None
+        self._revision_plan = None
 
         self.status_changed.emit("cancelled", "")
         self.task_changed.emit("")

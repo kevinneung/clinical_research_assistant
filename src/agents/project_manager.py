@@ -66,10 +66,20 @@ When creating CSV exports:
 - Format for easy import into spreadsheet software
 """
 
+def _get_project_manager_instructions(ctx: RunContext[AgentDeps]) -> str:
+    """Return project manager instructions, appending any user customizations."""
+    from src.services.prompt_store import PromptStore
+
+    custom = PromptStore().get("project_manager")
+    if custom:
+        return PROJECT_MANAGER_INSTRUCTIONS + f"\n\n## Additional User Instructions\n{custom}"
+    return PROJECT_MANAGER_INSTRUCTIONS
+
+
 project_manager_agent = Agent(
     deps_type=AgentDeps,
     output_type=ProjectEstimate,
-    instructions=PROJECT_MANAGER_INSTRUCTIONS,
+    instructions=_get_project_manager_instructions,
 )
 
 
