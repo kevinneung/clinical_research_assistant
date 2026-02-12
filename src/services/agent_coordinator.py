@@ -107,6 +107,7 @@ class AgentWorker(QThread):
         self.coro = coro
         self.loop: asyncio.AbstractEventLoop | None = None
         self._task: asyncio.Task | None = None
+        self._cancelling = False
 
     def run(self):
         """Run the coroutine in a new event loop."""
@@ -119,13 +120,19 @@ class AgentWorker(QThread):
         except asyncio.CancelledError:
             self.cancelled.emit()
         except BaseException as e:
-            self.error.emit(_format_error(e))
+            if self._cancelling:
+                # Exception occurred during cancellation (e.g. MCP stdio
+                # teardown raising BrokenResourceError) — treat as cancel.
+                self.cancelled.emit()
+            else:
+                self.error.emit(_format_error(e))
         finally:
             self.loop.close()
 
     def cancel(self):
         """Request cancellation of the running task."""
         if self.loop and self._task and not self._task.done():
+            self._cancelling = True
             self.loop.call_soon_threadsafe(self._task.cancel)
 
 
